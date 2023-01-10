@@ -5,7 +5,25 @@ import (
 	"gorm.io/gorm"
 )
 
-func scanEnumValue[T UserStatus | UserRole | TransactionStatus | TransactionType](to *T, value any) error {
+type EnumsConstraint interface {
+	UserRole | UserStatus | TransactionType | TransactionStatus
+}
+
+func enumFactory[T EnumsConstraint](s string, possibleValues ...T) (T, error) {
+	if len(possibleValues) < 1 {
+		//panic is intentional since meeting this condition shows
+		//incorrect programming (an enum without possible values)
+		panic("incorrectly constructed enum")
+	}
+	for _, value := range possibleValues {
+		if s == string(value) {
+			return value, nil
+		}
+	}
+	return T(""), fmt.Errorf("%q is not a possible value for type %T", s, possibleValues[0])
+}
+
+func scanEnumValue[T EnumsConstraint](to *T, value any) error {
 	switch typed := value.(type) {
 	case []byte:
 		*to = T(typed)
@@ -17,7 +35,11 @@ func scanEnumValue[T UserStatus | UserRole | TransactionStatus | TransactionType
 	return nil
 }
 
-func createSingleGorm[T User | Transaction | Merchant](entity *T, db *gorm.DB) error {
+type TypesConstraint interface {
+	User | Transaction | Merchant
+}
+
+func createSingleGorm[T TypesConstraint](entity *T, db *gorm.DB) error {
 	res := db.Create(entity)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("while creating %T: %w", entity, err)
@@ -25,7 +47,7 @@ func createSingleGorm[T User | Transaction | Merchant](entity *T, db *gorm.DB) e
 	return nil
 }
 
-func createMultipleGorm[T User | Transaction | Merchant](entities []*T, db *gorm.DB) error {
+func createMultipleGorm[T TypesConstraint](entities []*T, db *gorm.DB) error {
 	res := db.Create(entities)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("while creating multiple of type %T: %w", entities, err)
@@ -33,7 +55,7 @@ func createMultipleGorm[T User | Transaction | Merchant](entities []*T, db *gorm
 	return nil
 }
 
-func deleteSingleGorm[T User | Transaction | Merchant](entity *T, db *gorm.DB) error {
+func deleteSingleGorm[T TypesConstraint](entity *T, db *gorm.DB) error {
 	res := db.Delete(entity)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("while deleting %T: %w", entity, err)

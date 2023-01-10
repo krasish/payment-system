@@ -20,6 +20,10 @@ const (
 	StatusError    TransactionStatus = "ERROR"
 )
 
+func NewTransactionStatus(s string) (TransactionStatus, error) {
+	return enumFactory(s, StatusApproved, StatusReversed, StatusRefunded, StatusError)
+}
+
 func (ts *TransactionStatus) Scan(value interface{}) error {
 	return scanEnumValue(ts, value)
 }
@@ -36,6 +40,10 @@ const (
 	TypeRefund    TransactionType = "REFUND"
 	TypeReversal  TransactionType = "REVERSAL"
 )
+
+func NewTransactionType(s string) (TransactionType, error) {
+	return enumFactory(s, TypeAuthorize, TypeCharge, TypeRefund, TypeReversal)
+}
 
 func (tt *TransactionType) Scan(value interface{}) error {
 	return scanEnumValue(tt, value)

@@ -17,6 +17,10 @@ const (
 	RoleAdmin    UserRole = "ADMIN"
 )
 
+func NewUserRole(s string) (UserRole, error) {
+	return enumFactory(s, RoleMerchant, RoleAdmin)
+}
+
 func (ur *UserRole) Scan(value interface{}) error {
 	return scanEnumValue(ur, value)
 }
@@ -31,6 +35,10 @@ const (
 	StatusActive   UserStatus = "ACTIVE"
 	StatusInactive UserStatus = "INACTIVE"
 )
+
+func NewUserStatus(s string) (UserStatus, error) {
+	return enumFactory(s, StatusActive, StatusInactive)
+}
 
 func (us *UserStatus) Scan(value interface{}) error {
 	return scanEnumValue(us, value)
