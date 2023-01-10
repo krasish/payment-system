@@ -1,10 +1,13 @@
 package models
 
 import (
+	"context"
 	"database/sql/driver"
 	"fmt"
 	"net/mail"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/docker/distribution/uuid"
 
@@ -102,25 +105,25 @@ func NewTransactionStore(db *gorm.DB) *TransactionStore {
 	return &TransactionStore{db: db}
 }
 
-func (s *TransactionStore) CreateTransaction(t *Transaction) error {
-	return createSingleGorm[Transaction](t, s.db)
+func (s *TransactionStore) CreateTransaction(ctx context.Context, t *Transaction) error {
+	return createSingleGorm[Transaction](ctx, t, s.db)
 }
 
-func (s *TransactionStore) CreateTransactions(ts []*Transaction) error {
-	return createMultipleGorm[Transaction](ts, s.db)
+func (s *TransactionStore) CreateTransactions(ctx context.Context, ts []*Transaction) error {
+	return createMultipleGorm[Transaction](ctx, ts, s.db)
 }
 
-func (s *TransactionStore) UpdateStatus(t *Transaction) error {
-	res := s.db.Model(t).Where("id = ?", t.ID).Update("status", t.Status)
+func (s *TransactionStore) UpdateStatus(ctx context.Context, t *Transaction) error {
+	res := s.db.WithContext(ctx).Model(t).Where("id = ?", t.ID).Update("status", t.Status)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("while updating transaction: %w", err)
 	}
 	return nil
 }
 
-func (s *TransactionStore) GetAllTransactions() ([]*Transaction, error) {
+func (s *TransactionStore) GetAllTransactions(ctx context.Context) ([]*Transaction, error) {
 	var ts []*Transaction
-	err := s.db.Model(&Transaction{}).Preload("Merchant").Find(&ts).Error
+	err := s.db.WithContext(ctx).Model(&Transaction{}).Preload("Merchant").Find(&ts).Error
 	if err != nil {
 		return nil, fmt.Errorf("while getting all transctions: %w", err)
 	}
@@ -128,8 +131,27 @@ func (s *TransactionStore) GetAllTransactions() ([]*Transaction, error) {
 	return ts, nil
 }
 
-func (s *TransactionStore) DeleteTransaction(t *Transaction) error {
-	return deleteSingleGorm(t, s.db)
+func (s *TransactionStore) DeleteTransaction(ctx context.Context, t *Transaction) error {
+	return deleteSingleGorm(ctx, t, s.db)
+}
+
+type TransactionPeriodicJob func(context.Context)
+
+func (s *TransactionStore) GetPeriodicJobDeleter(deleteOlderThan, jobExecutionInterval time.Duration) TransactionPeriodicJob {
+	return func(ctx context.Context) {
+		ticker := time.NewTicker(jobExecutionInterval)
+		for {
+			select {
+			case <-ticker.C:
+				res := s.db.Where("created_at < ?", time.Now().Add(-deleteOlderThan)).Delete(&Transaction{})
+				if err := res.Error; err != nil {
+					logrus.Warnf("periodic transaction deletion job failed: %v", err)
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
 }
 
 func (s *TransactionStore) buildTransactionRelations(ts []*Transaction) {

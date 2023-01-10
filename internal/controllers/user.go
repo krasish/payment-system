@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -46,7 +47,7 @@ func NewUserController(store *models.UserStore) *UserController {
 	return &UserController{store: store}
 }
 
-func (c *UserController) CreateUsers(us []*User) error {
+func (c *UserController) CreateUsers(ctx context.Context, us []*User) error {
 	modelUsers := make([]*models.User, 0, len(us))
 	for _, u := range us {
 		model, err := u.toModel()
@@ -56,5 +57,5 @@ func (c *UserController) CreateUsers(us []*User) error {
 		modelUsers = append(modelUsers, model)
 	}
 
-	return c.store.CreateUsers(modelUsers)
+	return c.store.CreateUsers(ctx, modelUsers)
 }

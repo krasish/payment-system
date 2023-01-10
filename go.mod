@@ -8,6 +8,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/onsi/ginkgo/v2 v2.6.1
 	github.com/onsi/gomega v1.24.2
+	github.com/sirupsen/logrus v1.9.0
 	github.com/testcontainers/testcontainers-go v0.17.0
 	gorm.io/driver/postgres v1.4.6
 	gorm.io/gorm v1.24.3
@@ -40,7 +41,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opencontainers/runc v1.1.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
 	golang.org/x/crypto v0.4.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect

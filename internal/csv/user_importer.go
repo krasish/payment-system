@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"context"
 	enc_csv "encoding/csv"
 	"fmt"
 	"io"
@@ -40,5 +41,5 @@ func (i *AdminImporter) Import(pathToCSVFile string) error {
 		}
 		dtos = append(dtos, dto)
 	}
-	return i.c.CreateUsers(dtos)
+	return i.c.CreateUsers(context.Background(), dtos)
 }

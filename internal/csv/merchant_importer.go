@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"context"
 	enc_csv "encoding/csv"
 	"fmt"
 	"io"
@@ -40,5 +41,5 @@ func (i *MerchantImporter) Import(pathToCSVFile string) error {
 		}
 		dtos = append(dtos, dto)
 	}
-	return i.c.CreateMerchants(dtos)
+	return i.c.CreateMerchants(context.Background(), dtos)
 }

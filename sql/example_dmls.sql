@@ -1,5 +1,7 @@
 BEGIN;
 
+SET TIME ZONE 'EET';
+
 -- DML
 INSERT INTO payment_system_user(created_at, updated_at, _role, status)
 VALUES

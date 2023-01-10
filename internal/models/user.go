@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql/driver"
 	"fmt"
 	"time"
@@ -73,17 +74,17 @@ func NewUserStore(db *gorm.DB) *UserStore {
 	return &UserStore{db: db}
 }
 
-func (s *UserStore) CreateUser(u *User) error {
-	return createSingleGorm(u, s.db)
+func (s *UserStore) CreateUser(ctx context.Context, u *User) error {
+	return createSingleGorm(ctx, u, s.db)
 }
 
-func (s *UserStore) CreateUsers(us []*User) error {
-	return createMultipleGorm(us, s.db)
+func (s *UserStore) CreateUsers(ctx context.Context, us []*User) error {
+	return createMultipleGorm(ctx, us, s.db)
 }
 
-func (s *UserStore) GetAllUsers() ([]*User, error) {
+func (s *UserStore) GetAllUsers(ctx context.Context) ([]*User, error) {
 	var us []*User
-	res := s.db.Find(&us)
+	res := s.db.WithContext(ctx).Find(&us)
 	if err := res.Error; err != nil {
 		return nil, fmt.Errorf("while getting users: %w", err)
 	}

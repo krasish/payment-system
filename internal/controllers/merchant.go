@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -47,7 +48,7 @@ func NewMerchantController(store *models.MerchantStore) *MerchantController {
 	return &MerchantController{store: store}
 }
 
-func (c *MerchantController) CreateMerchants(ms []*Merchant) error {
+func (c *MerchantController) CreateMerchants(ctx context.Context, ms []*Merchant) error {
 	modelMerchants := make([]*models.Merchant, 0, len(ms))
 	for _, m := range ms {
 		model, err := m.toModel()
@@ -56,5 +57,5 @@ func (c *MerchantController) CreateMerchants(ms []*Merchant) error {
 		}
 		modelMerchants = append(modelMerchants, model)
 	}
-	return c.store.CreateMerchants(modelMerchants)
+	return c.store.CreateMerchants(ctx, modelMerchants)
 }

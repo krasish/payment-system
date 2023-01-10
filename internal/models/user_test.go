@@ -1,6 +1,7 @@
 package models_test
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/krasish/payment-system/internal/models"
@@ -38,22 +39,22 @@ var _ = Describe("Using UserStore", func() {
 	//Notice the Serial decorator
 	Context("to create and get users works", Serial, func() {
 		It("creates admin user successfully", func() {
-			err = userStore.CreateUser(adminUser)
+			err = userStore.CreateUser(context.Background(), adminUser)
 			Expect(err).To(BeNil())
 		})
 
 		It("creates merchant user successfully", func() {
-			err = userStore.CreateUser(merchantUser)
+			err = userStore.CreateUser(context.Background(), merchantUser)
 			Expect(err).To(BeNil())
 		})
 
 		It("creates list of inactive users successfully", func() {
-			err = userStore.CreateUsers(inactiveUsers)
+			err = userStore.CreateUsers(context.Background(), inactiveUsers)
 			Expect(err).To(BeNil())
 		})
 
 		It("gets all previously created users successfully", func() {
-			users, err := userStore.GetAllUsers()
+			users, err := userStore.GetAllUsers(context.Background())
 			Expect(err).To(BeNil())
 			Expect(users).To(HaveLen(4))
 			Expect(users).Should(ContainElements(BeComparableTo(adminUser), BeComparableTo(merchantUser)))

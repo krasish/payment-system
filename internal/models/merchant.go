@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"net/mail"
 
@@ -59,17 +60,17 @@ func NewMerchantStore(db *gorm.DB) *MerchantStore {
 	return &MerchantStore{db: db}
 }
 
-func (s *MerchantStore) CreateMerchant(m *Merchant) error {
-	return createSingleGorm(m, s.db)
+func (s *MerchantStore) CreateMerchant(ctx context.Context, m *Merchant) error {
+	return createSingleGorm(ctx, m, s.db)
 }
 
-func (s *MerchantStore) CreateMerchants(ms []*Merchant) error {
-	return createMultipleGorm(ms, s.db)
+func (s *MerchantStore) CreateMerchants(ctx context.Context, ms []*Merchant) error {
+	return createMultipleGorm(ctx, ms, s.db)
 }
 
-func (s *MerchantStore) GetAllMerchants() ([]*Merchant, error) {
+func (s *MerchantStore) GetAllMerchants(ctx context.Context) ([]*Merchant, error) {
 	var ms []*Merchant
-	err := s.db.Model(&Merchant{}).Preload("User").Preload("Transactions").Find(&ms).Error
+	err := s.db.WithContext(ctx).Model(&Merchant{}).Preload("User").Preload("Transactions").Find(&ms).Error
 	if err != nil {
 		return nil, fmt.Errorf("while getting all merchants: %w", err)
 	}
@@ -82,9 +83,9 @@ func (s *MerchantStore) GetAllMerchants() ([]*Merchant, error) {
 	return ms, nil
 }
 
-func (s *MerchantStore) GetMerchantById(id uint) (*Merchant, error) {
+func (s *MerchantStore) GetMerchantById(ctx context.Context, id uint) (*Merchant, error) {
 	var m *Merchant
-	err := s.db.Model(&Merchant{}).Where("user_id = ?", id).Preload("User").Preload("Transactions").First(&m).Error
+	err := s.db.WithContext(ctx).Model(&Merchant{}).Where("user_id = ?", id).Preload("User").Preload("Transactions").First(&m).Error
 	if err != nil {
 		return nil, fmt.Errorf("while getting all merchants: %w", err)
 	}
@@ -93,6 +94,6 @@ func (s *MerchantStore) GetMerchantById(id uint) (*Merchant, error) {
 	return m, nil
 }
 
-func (s *MerchantStore) DeleteMerchant(m *Merchant) error {
-	return deleteSingleGorm(m, s.db)
+func (s *MerchantStore) DeleteMerchant(ctx context.Context, m *Merchant) error {
+	return deleteSingleGorm(ctx, m, s.db)
 }

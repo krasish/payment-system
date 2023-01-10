@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"gorm.io/gorm"
 )
@@ -39,24 +40,24 @@ type TypesConstraint interface {
 	User | Transaction | Merchant
 }
 
-func createSingleGorm[T TypesConstraint](entity *T, db *gorm.DB) error {
-	res := db.Create(entity)
+func createSingleGorm[T TypesConstraint](ctx context.Context, entity *T, db *gorm.DB) error {
+	res := db.WithContext(ctx).Create(entity)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("while creating %T: %w", entity, err)
 	}
 	return nil
 }
 
-func createMultipleGorm[T TypesConstraint](entities []*T, db *gorm.DB) error {
-	res := db.Create(entities)
+func createMultipleGorm[T TypesConstraint](ctx context.Context, entities []*T, db *gorm.DB) error {
+	res := db.WithContext(ctx).Create(entities)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("while creating multiple of type %T: %w", entities, err)
 	}
 	return nil
 }
 
-func deleteSingleGorm[T TypesConstraint](entity *T, db *gorm.DB) error {
-	res := db.Delete(entity)
+func deleteSingleGorm[T TypesConstraint](ctx context.Context, entity *T, db *gorm.DB) error {
+	res := db.WithContext(ctx).Delete(entity)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("while deleting %T: %w", entity, err)
 	}

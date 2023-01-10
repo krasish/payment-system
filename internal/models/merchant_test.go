@@ -1,6 +1,7 @@
 package models_test
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/distribution/uuid"
@@ -51,15 +52,15 @@ var _ = Describe("Using MerchantStore", func() {
 	//Notice the Serial decorator
 	Context("to create and get merchants", Serial, func() {
 		It("creates proper merchant successfully", func() {
-			err := merchantStore.CreateMerchant(merchant)
+			err := merchantStore.CreateMerchant(context.Background(), merchant)
 			Expect(err).To(BeNil())
 		})
 		It("creates list of merchants successfully", func() {
-			err := merchantStore.CreateMerchants([]*models.Merchant{merchant2, merchant3})
+			err := merchantStore.CreateMerchants(context.Background(), []*models.Merchant{merchant2, merchant3})
 			Expect(err).To(BeNil())
 		})
 		It("gets all previously created merchants", func() {
-			merchants, err := merchantStore.GetAllMerchants()
+			merchants, err := merchantStore.GetAllMerchants(context.Background())
 			Expect(err).To(BeNil())
 			merchant.Transactions = make([]models.Transaction, 0)
 			merchant2.Transactions = make([]models.Transaction, 0)
@@ -74,20 +75,20 @@ var _ = Describe("Using MerchantStore", func() {
 			transaction2 *models.Transaction
 		)
 		It("creates merchant and its transactions successfully", func() {
-			err := merchantStore.CreateMerchant(merchantWithTransactions)
+			err := merchantStore.CreateMerchant(context.Background(), merchantWithTransactions)
 			Expect(err).To(BeNil())
 
 			transaction1, _ = models.NewTransaction(uuid.Generate().String(), models.ToCurrency(500), models.TypeAuthorize, models.StatusApproved, "cusotmer1@yahoo.com", "0889998989", merchantWithTransactions.UserID, nil)
-			err = transactionStore.CreateTransaction(transaction1)
+			err = transactionStore.CreateTransaction(context.Background(), transaction1)
 			Expect(err).To(BeNil())
 
 			transaction2, _ = models.NewTransaction(uuid.Generate().String(), models.ToCurrency(600), models.TypeCharge, models.StatusApproved, "cusotmer1@yahoo.com", "0889998989", merchantWithTransactions.UserID, &transaction1.ID)
-			err = transactionStore.CreateTransaction(transaction2)
+			err = transactionStore.CreateTransaction(context.Background(), transaction2)
 			Expect(err).To(BeNil())
 		})
 
 		It("retrieves merchant by id with its transactions successfully", func() {
-			res, err := merchantStore.GetMerchantById(merchantWithTransactions.UserID)
+			res, err := merchantStore.GetMerchantById(context.Background(), merchantWithTransactions.UserID)
 			Expect(err).To(BeNil())
 			Expect(res.UserID).To(Equal(merchantWithTransactions.UserID))
 			Expect(res.Name).To(Equal(merchantWithTransactions.Name))

@@ -1,7 +1,9 @@
 package models_test
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/docker/distribution/uuid"
 	"github.com/krasish/payment-system/internal/models"
@@ -56,12 +58,12 @@ var _ = Describe("Using TransactionStore", func() {
 		merchant, err = models.NewMerchant("Merchant With Transactions", "Hello!", merchantEmail, models.StatusActive)
 		Expect(err).To(BeNil())
 
-		err = merchantStore.CreateMerchant(merchant)
+		err = merchantStore.CreateMerchant(context.Background(), merchant)
 		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
-		err = merchantStore.DeleteMerchant(merchant)
+		err = merchantStore.DeleteMerchant(context.Background(), merchant)
 		Expect(err).To(BeNil())
 	})
 
@@ -70,38 +72,38 @@ var _ = Describe("Using TransactionStore", func() {
 			transaction1, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeAuthorize, models.StatusApproved, customerEmail, customerPhone, merchant.UserID, nil)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.CreateTransaction(transaction1)
+			err = transactionStore.CreateTransaction(context.Background(), transaction1)
 			Expect(err).To(BeNil())
 
 			transaction2, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeCharge, models.StatusApproved, customerEmail, customerPhone, merchant.UserID, &transaction1.ID)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.CreateTransaction(transaction2)
+			err = transactionStore.CreateTransaction(context.Background(), transaction2)
 			Expect(err).To(BeNil())
 
 			transaction3, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeRefund, models.StatusApproved, customerEmail, customerPhone, merchant.UserID, &transaction2.ID)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.CreateTransaction(transaction3)
+			err = transactionStore.CreateTransaction(context.Background(), transaction3)
 			Expect(err).To(BeNil())
 
 			transaction2.Status = models.StatusRefunded
-			err = transactionStore.UpdateStatus(transaction2)
+			err = transactionStore.UpdateStatus(context.Background(), transaction2)
 			Expect(err).To(BeNil())
 
-			transactions, err := transactionStore.GetAllTransactions()
+			transactions, err := transactionStore.GetAllTransactions(context.Background())
 			Expect(err).To(BeNil())
 
 			compareTransactions([]*models.Transaction{transaction1, transaction2, transaction3}, transactions)
 
 			//Try to delete all of them to check for issues with db cascade
-			err = transactionStore.DeleteTransaction(transaction1)
+			err = transactionStore.DeleteTransaction(context.Background(), transaction1)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.DeleteTransaction(transaction2)
+			err = transactionStore.DeleteTransaction(context.Background(), transaction2)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.DeleteTransaction(transaction3)
+			err = transactionStore.DeleteTransaction(context.Background(), transaction3)
 			Expect(err).To(BeNil())
 		})
 
@@ -109,31 +111,61 @@ var _ = Describe("Using TransactionStore", func() {
 			transaction1, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeAuthorize, models.StatusApproved, customerEmail, customerPhone, merchant.UserID, nil)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.CreateTransaction(transaction1)
+			err = transactionStore.CreateTransaction(context.Background(), transaction1)
 			Expect(err).To(BeNil())
 
 			transaction2, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeReversal, models.StatusReversed, customerEmail, customerPhone, merchant.UserID, &transaction1.ID)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.CreateTransaction(transaction2)
+			err = transactionStore.CreateTransaction(context.Background(), transaction2)
 			Expect(err).To(BeNil())
 
 			transaction1.Status = models.StatusReversed
-			err = transactionStore.UpdateStatus(transaction1)
+			err = transactionStore.UpdateStatus(context.Background(), transaction1)
 			Expect(err).To(BeNil())
 
-			transactions, err := transactionStore.GetAllTransactions()
+			transactions, err := transactionStore.GetAllTransactions(context.Background())
 			Expect(err).To(BeNil())
 			compareTransactions([]*models.Transaction{transaction1, transaction2}, transactions)
 
-			err = transactionStore.DeleteTransaction(transaction1)
+			err = transactionStore.DeleteTransaction(context.Background(), transaction1)
 			Expect(err).To(BeNil())
 
-			err = transactionStore.DeleteTransaction(transaction2)
+			err = transactionStore.DeleteTransaction(context.Background(), transaction2)
 			Expect(err).To(BeNil())
 		})
 	})
 
+	Context("for periodic transactions deletion", func() {
+		It("deletes transactions", func() {
+			transaction1, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeAuthorize, models.StatusApproved, customerEmail, customerPhone, merchant.UserID, nil)
+			Expect(err).To(BeNil())
+
+			err = transactionStore.CreateTransaction(context.Background(), transaction1)
+			Expect(err).To(BeNil())
+
+			transaction2, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeCharge, models.StatusApproved, customerEmail, customerPhone, merchant.UserID, &transaction1.ID)
+			Expect(err).To(BeNil())
+
+			err = transactionStore.CreateTransaction(context.Background(), transaction2)
+			Expect(err).To(BeNil())
+
+			transactionDeleter := transactionStore.GetPeriodicJobDeleter(100*time.Millisecond, 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			DeferCleanup(cancel)
+
+			go transactionDeleter(ctx)
+			<-ctx.Done()
+
+			//TODO: There is an issue causing the gormDB to use another schema. Fix it
+			_, err = sqlDB.Exec(fmt.Sprintf(SetSearchPathStatementFormat, TransactionTestSchemaName))
+			Expect(err).To(BeNil())
+
+			transactions, err := transactionStore.GetAllTransactions(context.Background())
+			Expect(err).To(BeNil())
+			Expect(transactions).To(BeEmpty())
+		})
+	})
 })
 
 func compareTransactions(expected []*models.Transaction, actual []*models.Transaction) {
