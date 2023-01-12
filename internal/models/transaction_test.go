@@ -63,7 +63,7 @@ var _ = Describe("Using TransactionStore", func() {
 	})
 
 	AfterEach(func() {
-		err = merchantStore.DeleteMerchant(context.Background(), merchant)
+		err = merchantStore.DeleteMerchant(context.Background(), merchant.Email)
 		Expect(err).To(BeNil())
 	})
 

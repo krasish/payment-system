@@ -14,7 +14,10 @@ import (
 
 type ClaimsKeyType string
 
-const ClaimsCtxKey = ClaimsKeyType("context-claims")
+const (
+	ClaimsCtxKey       = ClaimsKeyType("context-claims")
+	ContentTypeAppJSON = "application/json"
+)
 
 func securedHandler(jwtKey []byte, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -60,9 +63,15 @@ func respondWithMessage(writer http.ResponseWriter, message string, statusCode i
 		http.Error(writer, fmt.Sprintf("Failed to construct message response: %v", err.Error()), http.StatusInternalServerError)
 		return
 	}
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Content-Type", ContentTypeAppJSON)
 	writer.WriteHeader(statusCode)
 	if _, err := writer.Write(resp); err != nil {
 		logrus.Warnf("Failed to write response body: %v", err)
+	}
+}
+
+func respondWithJSON(writer http.ResponseWriter, val any) {
+	if err := json.NewEncoder(writer).Encode(val); err != nil {
+		respondWithMessage(writer, fmt.Sprintf("failed to marshal %T: %v", val, err), http.StatusInternalServerError)
 	}
 }

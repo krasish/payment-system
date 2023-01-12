@@ -14,13 +14,13 @@ const MerchantTestSchemaName = "payment_system_merchant_test"
 
 var _ = Describe("Using NewMerchant", func() {
 	It("creates merchant without error for correct values", func() {
-		_, err := models.NewMerchant("Sample Merchant", "Desctiption", "test@yahoo.com", models.StatusActive)
+		_, err := models.NewMerchant("Sample Merchant", "Description", "test@yahoo.com", models.StatusActive)
 		Expect(err).To(BeNil())
 	})
 	It("fails to create merchant when email is wrong", func() {
-		_, err := models.NewMerchant("Sample Merchant", "Desctiption", "", models.StatusActive)
+		_, err := models.NewMerchant("Sample Merchant", "Description", "", models.StatusActive)
 		Expect(err).NotTo(BeNil())
-		_, err = models.NewMerchant("Sample Merchant", "Desctiption", "www.google.com", models.StatusActive)
+		_, err = models.NewMerchant("Sample Merchant", "Description", "www.google.com", models.StatusActive)
 		Expect(err).NotTo(BeNil())
 	})
 })
@@ -30,6 +30,7 @@ var (
 	merchant2, _ = models.NewMerchant("Merchant Two", "Merchant Two Description", "merchant2@abv.bg", models.StatusActive)
 	merchant3, _ = models.NewMerchant("Merchant Three", "Merchant Three Description", "merchant3@abv.bg", models.StatusInactive)
 
+	updatedMerchant, _          = models.NewMerchant("Updated Merchant", "Updated Merchant Description", "merchant_update@abv.bg", models.StatusActive)
 	merchantWithTransactions, _ = models.NewMerchant("Merchant With Transaction", "Merchant With Transaction Description", "merchant4@abv.bg", models.StatusActive)
 )
 
@@ -49,7 +50,7 @@ var _ = Describe("Using MerchantStore", func() {
 	})
 
 	//Notice the Serial decorator
-	Context("to create and get merchants", Serial, func() {
+	Context("to create, update and get merchants", Serial, func() {
 		It("creates proper merchant successfully", func() {
 			err := merchantStore.CreateMerchant(context.Background(), merchant)
 			Expect(err).To(BeNil())
@@ -58,13 +59,30 @@ var _ = Describe("Using MerchantStore", func() {
 			err := merchantStore.CreateMerchants(context.Background(), []*models.Merchant{merchant2, merchant3})
 			Expect(err).To(BeNil())
 		})
+		It("updates proper merchant successfully", func() {
+			err := merchantStore.CreateMerchant(context.Background(), updatedMerchant)
+			Expect(err).To(BeNil())
+
+			updatedMerchant.User.Status = models.StatusInactive
+			err = merchantStore.UpdateMerchant(context.Background(), updatedMerchant)
+			Expect(err).To(BeNil())
+		})
+
 		It("gets all previously created merchants", func() {
 			merchants, err := merchantStore.GetAllMerchants(context.Background())
 			Expect(err).To(BeNil())
 			merchant.Transactions = make([]models.Transaction, 0)
 			merchant2.Transactions = make([]models.Transaction, 0)
 			merchant3.Transactions = make([]models.Transaction, 0)
-			Expect(merchants).Should(ContainElements(BeComparableTo(merchant), BeComparableTo(merchant2), BeComparableTo(merchant3)))
+			updatedMerchant.Transactions = make([]models.Transaction, 0)
+			//Needed bc update does not prefill values
+			for _, m := range merchants {
+				if m.UserID == updatedMerchant.UserID {
+					updatedMerchant.User.UpdatedAt = m.User.UpdatedAt
+					break
+				}
+			}
+			Expect(merchants).Should(ContainElements(BeComparableTo(merchant), BeComparableTo(merchant2), BeComparableTo(merchant3), BeComparableTo(updatedMerchant)))
 		})
 	})
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 
@@ -20,7 +21,7 @@ func NewTransactionHandlerFactory(tc *controllers.TransactionController) *Transa
 	return &TransactionHandlerFactory{tc: tc}
 }
 
-func (f *TransactionHandlerFactory) GetCreateHandler() http.HandlerFunc {
+func (f *TransactionHandlerFactory) BuildCreateHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		t := &controllers.Transaction{}
 		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -38,7 +39,7 @@ func (f *TransactionHandlerFactory) GetCreateHandler() http.HandlerFunc {
 			respondWithMessage(w, "invalid token claims format", http.StatusUnauthorized)
 			return
 		}
-		if claims.Subject != t.MerchantEmail {
+		if !strings.EqualFold(claims.Subject, t.MerchantEmail) {
 			respondWithMessage(w, "cannot create transactions on behalf of other merchants", http.StatusBadRequest)
 			return
 		}
@@ -50,5 +51,16 @@ func (f *TransactionHandlerFactory) GetCreateHandler() http.HandlerFunc {
 			respondWithMessage(w, errMsg, http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+func (f *TransactionHandlerFactory) BuildGetHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		transactions, err := f.tc.GetTransactions(r.Context())
+		if err != nil {
+			respondWithMessage(w, fmt.Sprintf("failed to get transactions: %v", err), http.StatusInternalServerError)
+			return
+		}
+		respondWithJSON(w, transactions)
 	}
 }

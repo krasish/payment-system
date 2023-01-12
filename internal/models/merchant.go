@@ -2,9 +2,14 @@ package models
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/mail"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgconn"
+
+	"gorm.io/gorm/clause"
 
 	"gorm.io/gorm"
 )
@@ -30,6 +35,19 @@ func NewMerchant(name string, description string, email string, status UserStatu
 		Role:   RoleMerchant,
 		Status: status,
 	}}, nil
+}
+
+func (m *Merchant) BeforeUpdate(tx *gorm.DB) error {
+	merchantWithID := Merchant{}
+	res := tx.Model(&merchantWithID).Where("email = ?", m.Email).First(&merchantWithID)
+	if err := res.Error; err != nil {
+		return fmt.Errorf("while preloading user_id for merchant in before update hook: %w", err)
+	}
+	res = tx.Model(User{}).Where("id = ?", merchantWithID.UserID).Update("status", m.User.Status)
+	if err := res.Error; err != nil {
+		return fmt.Errorf("while updating user in merchant before update hook: %w", err)
+	}
+	return nil
 }
 
 func (m *Merchant) calculateTTS() {
@@ -93,6 +111,14 @@ func (s *MerchantStore) GetMerchantByEmail(ctx context.Context, email string) (*
 	return s.getMerchantByCondition(ctx, "email = ?", strings.ToLower(email))
 }
 
+func (s *MerchantStore) UpdateMerchant(ctx context.Context, m *Merchant) error {
+	res := s.db.WithContext(ctx).Model(m).Omit(clause.Associations).Where("email = ?", m.Email).Updates(map[string]interface{}{"name": m.Name, "description": m.Description, "email": m.Email})
+	if err := res.Error; err != nil {
+		return fmt.Errorf("while updating merchant: %w", err)
+	}
+	return nil
+}
+
 func (s *MerchantStore) getMerchantByCondition(ctx context.Context, condition string, arg any) (*Merchant, error) {
 	var m *Merchant
 	err := s.db.WithContext(ctx).Model(&Merchant{}).Where(condition, arg).Preload("User").Preload("Transactions").First(&m).Error
@@ -104,6 +130,13 @@ func (s *MerchantStore) getMerchantByCondition(ctx context.Context, condition st
 	return m, nil
 }
 
-func (s *MerchantStore) DeleteMerchant(ctx context.Context, m *Merchant) error {
-	return deleteSingleGorm(ctx, m, s.db)
+func (s *MerchantStore) DeleteMerchant(ctx context.Context, email string) error {
+	res := s.db.WithContext(ctx).Where("email = ?", email).Delete(&Merchant{})
+	if err := res.Error; err != nil {
+		if pqError, ok := err.(*pgconn.PgError); ok && pqError.Code == "23503" {
+			return errors.New("merchant is still referenced by transactions")
+		}
+		return fmt.Errorf("while deleting merchant: %w", err)
+	}
+	return nil
 }

@@ -64,7 +64,7 @@ func (c *MerchantController) CreateMerchants(ctx context.Context, ms []*Merchant
 	for _, m := range ms {
 		model, err := m.toModel()
 		if err != nil {
-			return fmt.Errorf("while converting merchants to model DTO: %w", err)
+			return fmt.Errorf("while converting merchants to model in create merchant: %w", err)
 		}
 		modelMerchants = append(modelMerchants, model)
 	}
@@ -79,4 +79,35 @@ func (c *MerchantController) GetMerchantByMail(ctx context.Context, email string
 	m := new(Merchant)
 	m.fromModel(merchantModel)
 	return m, nil
+}
+
+func (c *MerchantController) GetMerchants(ctx context.Context) ([]*Merchant, error) {
+	merchants, err := c.store.GetAllMerchants(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*Merchant, len(merchants))
+	for i := range merchants {
+		res[i] = &Merchant{}
+		res[i].fromModel(merchants[i])
+	}
+	return res, nil
+}
+
+func (c *MerchantController) UpdateMerchant(ctx context.Context, merchant *Merchant) error {
+	model, err := merchant.toModel()
+	if err != nil {
+		return fmt.Errorf("while converting merchant to model in update merchant")
+	}
+	if err = c.store.UpdateMerchant(ctx, model); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *MerchantController) DeleteMerchant(ctx context.Context, merchantEmail string) error {
+	if err := c.store.DeleteMerchant(ctx, merchantEmail); err != nil {
+		return err
+	}
+	return nil
 }

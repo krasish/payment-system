@@ -132,3 +132,16 @@ func (c *TransactionController) CreateTransaction(ctx context.Context, t *Transa
 	}
 	return c.transactionStore.CreateTransaction(ctx, model)
 }
+
+func (c *TransactionController) GetTransactions(ctx context.Context) ([]*Transaction, error) {
+	transactions, err := c.transactionStore.GetAllTransactions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*Transaction, len(transactions))
+	for i := range transactions {
+		res[i] = &Transaction{}
+		res[i].fromModel(transactions[i])
+	}
+	return res, nil
+}
