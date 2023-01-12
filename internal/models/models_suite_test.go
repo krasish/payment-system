@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	pathToDDL          = "/../../sql/schema.sql"
+	pathToDDL          = "/../../sql/000002_create_schema.up.sql"
 	postgresImage      = "postgres:15"
 	testDatabaseConfig = config.DatabaseConfig{
 		User:     "test-user",

@@ -45,7 +45,7 @@ func CreateHTTPServer(cfg config.HttpConfig, tc *controllers.TransactionControll
 
 	loggingHandler := handlers.LoggingHandler(os.Stdout, handlers.RecoveryHandler()(mainRouter))
 	srv := &http.Server{
-		Addr:              cfg.Address,
+		Addr:              ":" + cfg.Port,
 		Handler:           loggingHandler,
 		ReadHeaderTimeout: cfg.ServerTimeout,
 	}

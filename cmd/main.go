@@ -60,7 +60,7 @@ func main() {
 	transactionDeleter := transactionStore.GetPeriodicJobDeleter(time.Hour, cfg.DeletionJobInterval)
 	go transactionDeleter(ctx)
 
-	logrus.Infof("Running HTTP server on %s...", cfg.HttpConfig.Address)
+	logrus.Infof("Running HTTP server on %s...", cfg.HttpConfig.Port)
 	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		logrus.Errorf("HTTP server ListenAndServe: %v", err)
 	}

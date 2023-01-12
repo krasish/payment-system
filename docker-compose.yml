@@ -1,0 +1,61 @@
+version: '3.9'
+services:
+  app:
+    container_name: golang_container
+    environment:
+      - APP_DB_USER=mydbuser
+      - APP_DB_PASSWORD=mydbpwd
+      - APP_DB_NAME=mydbname
+      - APP_DB_HOST=postgresdb
+      - APP_DB_PORT=5432
+    tty: true
+    build:
+      context: .
+    expose:
+      - 8080
+    ports:
+      - 8080:8080
+    restart: on-failure
+    volumes:
+      - .:/payment-app
+    depends_on:
+      - postgresdb
+      - migrate
+    networks:
+      - payment
+
+  migrate:
+    image: migrate/migrate
+    restart: on-failure
+    volumes:
+      - ./sql:/migrations
+    command: [ "-path", "/migrations", "-database",  "postgres://mydbuser:mydbpwd@postgresdb:5432/mydbname?sslmode=disable", "up"]
+    links:
+      - postgresdb
+    depends_on:
+      - postgresdb
+    networks:
+      - payment
+
+  postgresdb:
+    image: postgres:15
+    container_name: postgres_container
+    environment:
+      - POSTGRES_USER=mydbuser
+      - POSTGRES_PASSWORD=mydbpwd
+      - POSTGRES_DB=mydbname
+      - DATABASE_HOST=postgresdb
+    ports:
+      - '1234:5432'
+    networks:
+      - payment
+    healthcheck:
+      test: pg_isready -U mydbuser -d mydbname
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+# Networks to be created to facilitate communication between containers
+networks:
+  payment:
+    driver: bridge
