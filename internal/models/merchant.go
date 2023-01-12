@@ -23,7 +23,7 @@ type Merchant struct {
 	Description         string
 	Email               string
 
-	Transactions []Transaction `gorm:"->;foreignKey:MerchantID;references:UserID"`
+	Transactions []Transaction `gorm:"->"`
 }
 
 func NewMerchant(name string, description string, email string, status UserStatus) (*Merchant, error) {

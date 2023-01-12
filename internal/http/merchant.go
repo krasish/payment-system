@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/krasish/payment-system/internal/views"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/sirupsen/logrus"
 
@@ -14,10 +16,13 @@ import (
 
 type MerchantHandlerFactory struct {
 	mc *controllers.MerchantController
+	tc *controllers.TransactionController
+
+	v *views.View
 }
 
-func NewMerchantHandlerFactory(mc *controllers.MerchantController) *MerchantHandlerFactory {
-	return &MerchantHandlerFactory{mc: mc}
+func NewMerchantHandlerFactory(mc *controllers.MerchantController, tc *controllers.TransactionController, v *views.View) *MerchantHandlerFactory {
+	return &MerchantHandlerFactory{mc: mc, tc: tc, v: v}
 }
 
 func (f *MerchantHandlerFactory) BuildGetHandler() http.HandlerFunc {
@@ -88,6 +93,24 @@ func (f *MerchantHandlerFactory) BuildDeleteHandler() http.HandlerFunc {
 			logrus.WithError(err).Error(errMsg)
 			respondWithMessage(w, errMsg, http.StatusInternalServerError)
 			return
+		}
+	}
+}
+
+func (f *MerchantHandlerFactory) BuildHTMLTemplateHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		merchants, err := f.mc.GetMerchants(r.Context())
+		if err != nil {
+			respondWithMessage(w, "cannot get merchants", http.StatusInternalServerError)
+		}
+		transactions, err := f.tc.GetTransactions(r.Context())
+		if err != nil {
+			respondWithMessage(w, "cannot get merchants", http.StatusInternalServerError)
+		}
+		viewData := views.NewMerchantsData(merchants, transactions)
+
+		if err := f.v.Render(w, viewData); err != nil {
+			respondWithMessage(w, "cannot parse HTML template", http.StatusInternalServerError)
 		}
 	}
 }

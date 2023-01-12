@@ -71,7 +71,7 @@ type Transaction struct {
 	CustomerPhone string
 
 	MerchantID uint
-	Merchant   Merchant `gorm:"foreignKey:UserID"`
+	Merchant   Merchant
 
 	BelongsToID *uint `gorm:"column:belongs_to"`
 	BelongsTo   *Transaction
@@ -156,7 +156,7 @@ func (s *TransactionStore) GetTransactionByUUID(ctx context.Context, extID strin
 
 func (s *TransactionStore) GetAllTransactions(ctx context.Context) ([]*Transaction, error) {
 	var ts []*Transaction
-	err := s.db.WithContext(ctx).Model(&Transaction{}).Preload("Merchant").Find(&ts).Error
+	err := s.db.WithContext(ctx).Preload("Merchant").Find(&ts).Error
 	if err != nil {
 		return nil, fmt.Errorf("while getting all transctions: %w", err)
 	}

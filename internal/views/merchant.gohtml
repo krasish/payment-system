@@ -1,0 +1,57 @@
+{{define "yield"}}
+    <div class="container">
+        <div class="jumbotron">
+            <h2>Merchants</h2>
+
+            <table class="table">
+                <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Email</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Transactions</th>
+                </tr>
+                </thead>
+                {{ range $Email, $Merchant := .}}
+                <tbody>
+                    <tr>
+                        <th scope="row">{{ $Merchant.Email }}</th>
+                        <td>{{ $Merchant.Name }}</td>
+                        <td>{{ $Merchant.Description }}</td>
+                        <td>{{ $Merchant.Status }}</td>
+                        <td>
+                            {{if $Merchant.Transactions}}
+                            <div class="table-responsive">
+                                <table class="table-striped">
+                                    <thead class="thead-dark">
+                                        <tr>
+                                            <th scope="col">Amount</th>
+                                            <th scope="col">Status</th>
+                                            <th scope="col">Type</th>
+                                            <th scope="col">CustomerEmail</th>
+                                            <th scope="col">CustomerPhone</th>
+                                        </tr>
+                                    </thead>
+                                        <tbody>
+                                            {{range $Merchant.Transactions}}
+                                            <tr>
+                                                <th scope="row" class="col-md-2">{{.Amount}}</th>
+                                                <td class="col-md-2">{{.Status}}</td>
+                                                <td class="col-md-2">{{.Type}}</td>
+                                                <td class="col-md-2">{{.CustomerEmail}}</td>
+                                                <td class="col-md-2">{{.CustomerPhone}}</td>
+                                            </tr>
+                                            {{ end}}
+                                        </tbody>
+                                </table>
+                            </div>
+                            {{end}}
+                        </td>
+                    </tr>
+                </tbody>
+            {{ end }}
+            </table>
+        </div>
+    </div>
+{{end}}

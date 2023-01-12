@@ -46,7 +46,7 @@ func (m *Merchant) fromModel(model *models.Merchant) {
 	m.UpdatedAt = model.User.UpdatedAt
 	m.Name = model.Name
 	m.Description = model.Description
-	m.Email = model.Description
+	m.Email = model.Email
 	m.Status = string(model.User.Status)
 	m.TotalTransactionSum = model.TotalTransactionSum.Float64()
 }

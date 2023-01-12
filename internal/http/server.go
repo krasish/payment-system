@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/krasish/payment-system/internal/views"
+
 	"github.com/gorilla/handlers"
 
 	"github.com/gorilla/mux"
@@ -11,7 +13,7 @@ import (
 	"github.com/krasish/payment-system/internal/controllers"
 )
 
-func CreateHTTPServer(cfg config.HttpConfig, tc *controllers.TransactionController, mc *controllers.MerchantController) (*http.Server, error) {
+func CreateHTTPServer(cfg config.HttpConfig, tc *controllers.TransactionController, mc *controllers.MerchantController, v *views.View) (*http.Server, error) {
 	var (
 		mainRouter = mux.NewRouter()
 		jwtKey     = []byte(cfg.JwtKey)
@@ -27,15 +29,19 @@ func CreateHTTPServer(cfg config.HttpConfig, tc *controllers.TransactionControll
 	mainRouter.HandleFunc(cfg.TransactionPath, createTransactionHandler).Methods(http.MethodPost)
 
 	//Merchant handlers
-	merchantHandlerFactory := NewMerchantHandlerFactory(mc)
+	merchantHandlerFactory := NewMerchantHandlerFactory(mc, tc, v)
 
 	getMerchantHandler := merchantHandlerFactory.BuildGetHandler()
 	updateMerchantHandler := securedHandler(jwtKey, handlers.ContentTypeHandler(merchantHandlerFactory.BuildUpdateHandler(), ContentTypeAppJSON).ServeHTTP)
 	deleteMerchantHandler := securedHandler(jwtKey, merchantHandlerFactory.BuildDeleteHandler())
+	htmlTemplateHandler := merchantHandlerFactory.BuildHTMLTemplateHandler()
 
 	mainRouter.HandleFunc(cfg.MerchantPath, getMerchantHandler).Methods(http.MethodGet)
 	mainRouter.HandleFunc(cfg.MerchantPath, updateMerchantHandler).Methods(http.MethodPut)
 	mainRouter.HandleFunc(cfg.MerchantPath, deleteMerchantHandler).Methods(http.MethodDelete)
+
+	viewsRouter := mainRouter.PathPrefix(cfg.ViewsPath).Subrouter()
+	viewsRouter.HandleFunc(cfg.MerchantPath, htmlTemplateHandler)
 
 	loggingHandler := handlers.LoggingHandler(os.Stdout, handlers.RecoveryHandler()(mainRouter))
 	srv := &http.Server{
