@@ -3,8 +3,10 @@ package models
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -75,6 +77,36 @@ type Transaction struct {
 	BelongsTo   *Transaction
 }
 
+func (t *Transaction) BeforeCreate(tx *gorm.DB) (err error) {
+	user := &User{}
+	res := tx.Model(&User{}).Where("id = ?", t.MerchantID).First(user)
+	if res.Error != nil {
+		return fmt.Errorf("while getting user in transaction before create hook: %w", err)
+	}
+	if user.Status != StatusActive {
+		return errors.New("while creating transaction: user not in active status")
+	}
+	return err
+}
+
+func (t *Transaction) AfterCreate(tx *gorm.DB) (err error) {
+	if t.BelongsToID != nil {
+		switch t.Type { //nolint:exhaustive
+		case TypeRefund:
+			res := tx.Model(&Transaction{}).Where("id = ?", *t.BelongsToID).Update("status", StatusRefunded)
+			if err := res.Error; err != nil {
+				return fmt.Errorf("while updating refund referenced transaction in after create hook: %w", err)
+			}
+		case TypeReversal:
+			res := tx.Model(&Transaction{}).Where("id = ?", *t.BelongsToID).Update("status", StatusReversed)
+			if err := res.Error; err != nil {
+				return fmt.Errorf("while updating reversal referenced transaction in adter create hook: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
 func NewTransaction(externalID string, amount Currency, Type TransactionType, status TransactionStatus, customerEmail string, customerPhone string, merchantID uint, belongsToID *uint) (*Transaction, error) {
 	_, err := mail.ParseAddress(customerEmail)
 	if err != nil {
@@ -89,7 +121,7 @@ func NewTransaction(externalID string, amount Currency, Type TransactionType, st
 		Type:          Type,
 		Amount:        amount,
 		Status:        status,
-		CustomerEmail: customerEmail,
+		CustomerEmail: strings.ToLower(customerEmail),
 		CustomerPhone: customerPhone,
 		MerchantID:    merchantID,
 		BelongsToID:   belongsToID,
@@ -113,12 +145,13 @@ func (s *TransactionStore) CreateTransactions(ctx context.Context, ts []*Transac
 	return createMultipleGorm[Transaction](ctx, ts, s.db)
 }
 
-func (s *TransactionStore) UpdateStatus(ctx context.Context, t *Transaction) error {
-	res := s.db.WithContext(ctx).Model(t).Where("id = ?", t.ID).Update("status", t.Status)
-	if err := res.Error; err != nil {
-		return fmt.Errorf("while updating transaction: %w", err)
+func (s *TransactionStore) GetTransactionByUUID(ctx context.Context, extID string) (*Transaction, error) {
+	var t Transaction
+	err := s.db.WithContext(ctx).Model(&Transaction{}).Where("ext_uuid = ?", extID).Preload("Merchant").Preload("BelongsTo").First(&t).Error
+	if err != nil {
+		return nil, fmt.Errorf("while getting all transctions: %w", err)
 	}
-	return nil
+	return &t, nil
 }
 
 func (s *TransactionStore) GetAllTransactions(ctx context.Context) ([]*Transaction, error) {

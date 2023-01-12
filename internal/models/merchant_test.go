@@ -3,7 +3,6 @@ package models_test
 import (
 	"context"
 	"fmt"
-
 	"github.com/docker/distribution/uuid"
 
 	"github.com/krasish/payment-system/internal/models"
@@ -88,20 +87,29 @@ var _ = Describe("Using MerchantStore", func() {
 		})
 
 		It("retrieves merchant by id with its transactions successfully", func() {
-			res, err := merchantStore.GetMerchantById(context.Background(), merchantWithTransactions.UserID)
-			Expect(err).To(BeNil())
-			Expect(res.UserID).To(Equal(merchantWithTransactions.UserID))
-			Expect(res.Name).To(Equal(merchantWithTransactions.Name))
-			Expect(res.Description).To(Equal(merchantWithTransactions.Description))
+			testGettingMerchant((*models.MerchantStore).GetMerchantById, merchantStore, merchantWithTransactions.UserID, transaction1, transaction2)
+		})
 
-			returnedTransactions := make([]*models.Transaction, 0)
-			for i := range res.Transactions {
-				returnedTransactions = append(returnedTransactions, &res.Transactions[i])
-			}
-			compareTransactions([]*models.Transaction{transaction1, transaction2}, returnedTransactions)
-
+		It("retrieves merchant by email with its transactions successfully", func() {
+			testGettingMerchant((*models.MerchantStore).GetMerchantByEmail, merchantStore, merchantWithTransactions.Email, transaction1, transaction2)
 		})
 
 	})
 
 })
+
+type merchantGetter[T string | uint] func(store *models.MerchantStore, ctx context.Context, arg T) (*models.Merchant, error)
+
+func testGettingMerchant[T string | uint](getter merchantGetter[T], store *models.MerchantStore, arg T, t1, t2 *models.Transaction) {
+	res, err := getter(store, context.Background(), arg)
+	Expect(err).To(BeNil())
+	Expect(res.UserID).To(Equal(merchantWithTransactions.UserID))
+	Expect(res.Name).To(Equal(merchantWithTransactions.Name))
+	Expect(res.Description).To(Equal(merchantWithTransactions.Description))
+
+	returnedTransactions := make([]*models.Transaction, 0)
+	for i := range res.Transactions {
+		returnedTransactions = append(returnedTransactions, &res.Transactions[i])
+	}
+	compareTransactions([]*models.Transaction{t1, t2}, returnedTransactions)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/mail"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -25,7 +26,7 @@ func NewMerchant(name string, description string, email string, status UserStatu
 	if err != nil {
 		return nil, fmt.Errorf("while creating merchant: %q is not a valid email address: %w", email, err)
 	}
-	return &Merchant{Name: name, Description: description, Email: email, User: User{
+	return &Merchant{Name: name, Description: description, Email: strings.ToLower(email), User: User{
 		Role:   RoleMerchant,
 		Status: status,
 	}}, nil
@@ -84,10 +85,19 @@ func (s *MerchantStore) GetAllMerchants(ctx context.Context) ([]*Merchant, error
 }
 
 func (s *MerchantStore) GetMerchantById(ctx context.Context, id uint) (*Merchant, error) {
+	return s.getMerchantByCondition(ctx, "user_id = ?", id)
+
+}
+
+func (s *MerchantStore) GetMerchantByEmail(ctx context.Context, email string) (*Merchant, error) {
+	return s.getMerchantByCondition(ctx, "email = ?", strings.ToLower(email))
+}
+
+func (s *MerchantStore) getMerchantByCondition(ctx context.Context, condition string, arg any) (*Merchant, error) {
 	var m *Merchant
-	err := s.db.WithContext(ctx).Model(&Merchant{}).Where("user_id = ?", id).Preload("User").Preload("Transactions").First(&m).Error
+	err := s.db.WithContext(ctx).Model(&Merchant{}).Where(condition, arg).Preload("User").Preload("Transactions").First(&m).Error
 	if err != nil {
-		return nil, fmt.Errorf("while getting all merchants: %w", err)
+		return nil, fmt.Errorf("while getting merchantwith condition %q: %w", condition, err)
 	}
 	m.calculateTTS()
 	m.buildTransactionRelations()

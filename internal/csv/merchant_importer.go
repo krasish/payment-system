@@ -3,9 +3,13 @@ package csv
 import (
 	"context"
 	enc_csv "encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+
+	"github.com/krasish/payment-system/internal/common"
 
 	"github.com/krasish/payment-system/internal/controllers"
 )
@@ -19,21 +23,21 @@ func NewMerchantImporter(c *controllers.MerchantController) *MerchantImporter {
 }
 
 func (i *MerchantImporter) Import(pathToCSVFile string) error {
-	file, err := os.Open(pathToCSVFile)
+	file, err := os.Open(filepath.Clean(pathToCSVFile))
 	if err != nil {
 		return fmt.Errorf("while opening file from %q: %w", pathToCSVFile, err)
 	}
-	defer file.Close()
+	defer common.CloseWithLogOnError(file)
 
 	r := enc_csv.NewReader(file)
 	dtos := make([]*controllers.Merchant, 0)
 	for {
 		record, err := r.Read()
 
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
-			return fmt.Errorf("while importing merchants: %v", err)
+			return fmt.Errorf("while importing merchants: %w", err)
 		}
 		dto := new(controllers.Merchant)
 		if err := dto.CSVUnmarshal(record); err != nil {

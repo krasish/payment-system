@@ -81,6 +81,10 @@ var _ = Describe("Using TransactionStore", func() {
 			err = transactionStore.CreateTransaction(context.Background(), transaction2)
 			Expect(err).To(BeNil())
 
+			returnedTransaction2, err := transactionStore.GetTransactionByUUID(context.Background(), transaction2.ExternalID)
+			Expect(err).To(BeNil())
+			compareTransactions([]*models.Transaction{transaction2}, []*models.Transaction{returnedTransaction2})
+
 			transaction3, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeRefund, models.StatusApproved, customerEmail, customerPhone, merchant.UserID, &transaction2.ID)
 			Expect(err).To(BeNil())
 
@@ -88,9 +92,6 @@ var _ = Describe("Using TransactionStore", func() {
 			Expect(err).To(BeNil())
 
 			transaction2.Status = models.StatusRefunded
-			err = transactionStore.UpdateStatus(context.Background(), transaction2)
-			Expect(err).To(BeNil())
-
 			transactions, err := transactionStore.GetAllTransactions(context.Background())
 			Expect(err).To(BeNil())
 
@@ -121,8 +122,6 @@ var _ = Describe("Using TransactionStore", func() {
 			Expect(err).To(BeNil())
 
 			transaction1.Status = models.StatusReversed
-			err = transactionStore.UpdateStatus(context.Background(), transaction1)
-			Expect(err).To(BeNil())
 
 			transactions, err := transactionStore.GetAllTransactions(context.Background())
 			Expect(err).To(BeNil())
@@ -133,6 +132,20 @@ var _ = Describe("Using TransactionStore", func() {
 
 			err = transactionStore.DeleteTransaction(context.Background(), transaction2)
 			Expect(err).To(BeNil())
+		})
+
+		It("does not create transactions for inactive merchants", func() {
+			inactiveMerchant, err := models.NewMerchant("Merchant With Transactions", "Hello!", "inactive_merchant@gmail.com", models.StatusInactive)
+			Expect(err).To(BeNil())
+
+			err = merchantStore.CreateMerchant(context.Background(), inactiveMerchant)
+			Expect(err).To(BeNil())
+
+			transaction1, err := models.NewTransaction(uuid.Generate().String(), models.ToCurrency(800), models.TypeAuthorize, models.StatusApproved, customerEmail, customerPhone, inactiveMerchant.UserID, nil)
+			Expect(err).To(BeNil())
+
+			err = transactionStore.CreateTransaction(context.Background(), transaction1)
+			Expect(err).NotTo(BeNil())
 		})
 	})
 
@@ -170,11 +183,13 @@ var _ = Describe("Using TransactionStore", func() {
 
 func compareTransactions(expected []*models.Transaction, actual []*models.Transaction) {
 	type Validation struct {
-		ID          uint
-		Status      models.TransactionStatus
-		Type        models.TransactionType
-		MerchantID  uint
-		BelongsToID *uint
+		ID            uint
+		CustomerMail  string
+		CustomerPhone string
+		Status        models.TransactionStatus
+		Type          models.TransactionType
+		MerchantID    uint
+		BelongsToID   *uint
 	}
 	Expect(expected).To(HaveLen(len(actual)))
 	expectV, actualV := make([]Validation, 0, len(expected)), make([]Validation, 0, len(expected))
@@ -182,17 +197,21 @@ func compareTransactions(expected []*models.Transaction, actual []*models.Transa
 	for i := 0; i < len(expected); i++ {
 		//Works since they have the same length
 		expectV, actualV = append(expectV, Validation{
-			ID:          expected[i].ID,
-			Status:      expected[i].Status,
-			Type:        expected[i].Type,
-			MerchantID:  expected[i].MerchantID,
-			BelongsToID: expected[i].BelongsToID,
+			ID:            expected[i].ID,
+			Status:        expected[i].Status,
+			CustomerMail:  expected[i].CustomerEmail,
+			CustomerPhone: expected[i].CustomerPhone,
+			Type:          expected[i].Type,
+			MerchantID:    expected[i].MerchantID,
+			BelongsToID:   expected[i].BelongsToID,
 		}), append(actualV, Validation{
-			ID:          actual[i].ID,
-			Status:      actual[i].Status,
-			Type:        actual[i].Type,
-			MerchantID:  actual[i].MerchantID,
-			BelongsToID: actual[i].BelongsToID,
+			ID:            actual[i].ID,
+			Status:        actual[i].Status,
+			Type:          actual[i].Type,
+			CustomerMail:  actual[i].CustomerEmail,
+			CustomerPhone: actual[i].CustomerPhone,
+			MerchantID:    actual[i].MerchantID,
+			BelongsToID:   actual[i].BelongsToID,
 		})
 	}
 	Expect(expectV).To(ContainElements(actualV))

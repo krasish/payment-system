@@ -13,10 +13,11 @@ type Merchant struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	Name        string
-	Description string
-	Email       string
-	Status      string
+	Name                string
+	Description         string
+	Email               string
+	Status              string
+	TotalTransactionSum float64
 }
 
 func (m *Merchant) CSVUnmarshal(record []string) error {
@@ -40,6 +41,16 @@ func (m *Merchant) toModel() (*models.Merchant, error) {
 	return models.NewMerchant(m.Name, m.Description, m.Email, status)
 }
 
+func (m *Merchant) fromModel(model *models.Merchant) {
+	m.CreatedAt = model.User.CreatedAt
+	m.UpdatedAt = model.User.UpdatedAt
+	m.Name = model.Name
+	m.Description = model.Description
+	m.Email = model.Description
+	m.Status = string(model.User.Status)
+	m.TotalTransactionSum = model.TotalTransactionSum.Float64()
+}
+
 type MerchantController struct {
 	store *models.MerchantStore
 }
@@ -58,4 +69,14 @@ func (c *MerchantController) CreateMerchants(ctx context.Context, ms []*Merchant
 		modelMerchants = append(modelMerchants, model)
 	}
 	return c.store.CreateMerchants(ctx, modelMerchants)
+}
+
+func (c *MerchantController) GetMerchantByMail(ctx context.Context, email string) (*Merchant, error) {
+	merchantModel, err := c.store.GetMerchantByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	m := new(Merchant)
+	m.fromModel(merchantModel)
+	return m, nil
 }
